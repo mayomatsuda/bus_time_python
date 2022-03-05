@@ -1,7 +1,6 @@
 # modules
-import json
+from nbformat import read
 import requests
-import ast
 from datetime import datetime
 
 # store the URL
@@ -16,29 +15,51 @@ tx = response.text
 # get time of bus arrival at specific stop and route
 def get_time(route, stop):
 
-    found = False
+    times = []
+
+    # lowest occurence of desired route
     ind1_low = tx.find('route_id":"' + route)
-    ind1_high = tx.find('route_id":"' + route, ind1_low)
+    if ind1_low == -1:
+        ind1_low = tx.find('route_id": "' + route)
+
+    # next occurence of desired route
+    ind1_high = tx.find('route_id":"' + route, ind1_low + 1)
+    if ind1_high == -1:
+        ind1_high = tx.find('route_id": "' + route, ind1_low + 1)
+
     print("*** " + route + " at " + stop + " ***")
 
-    while (not found):
-        print(ind1_low)
+    while (True):
+        
+        # this will eventually happen, terminating the loop
+        if (ind1_low == -1 or ind1_high == -1):
+            return sorted(times)
+
+        # ensure instance of the stop exists on the route
         here = tx.find(stop, ind1_low, ind1_high)
         if (here != -1):
-            found = True
+
+            # find occurence of desired stop
             ind2 = tx.find('stop_id":"' + stop, ind1_low)
+            if ind2 == -1:
+                ind2 = tx.find('stop_id": "' + stop, ind1_low)
+
+            # find occurence of time at most 50 characters before stop
             ind3 = tx.find('time', ind2 - 50)
+
+            # convert UNIX time to UTC, then to EST
             timeunix = int(tx[ind3+6:ind3+16])
             hour = int(datetime.utcfromtimestamp(timeunix).strftime('%H'))
-            hour = str(hour - 5)
+            hour = str((hour - 5) % 12)
+            if (hour == '0'): hour = '12'
             minute = str(datetime.utcfromtimestamp(timeunix).strftime('%M'))
             time = hour + ":" + minute
-            print(time)
-        else:
-            ind1_low = ind1_high
-            ind1_high = tx.find('route_id":"' + route, ind1_low)
+            times.append(time)
+        
+        ind1_low = ind1_high
+        ind1_high = tx.find('route_id":"' + route, ind1_low + 1)
+        if ind1_high == -1:
+            ind1_high = tx.find('route_id": "' + route, ind1_low + 1)
 
-    # print(time)
-
-get_time("02", "WHARMOIR")
-get_time("102", "WHARMOIR")
+print(get_time("02", "WHARMOIR"))
+print(get_time("102", "WHARMOIR"))
