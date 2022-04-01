@@ -1,11 +1,11 @@
 # modules
 from nbformat import read
 import requests
-from datetime import datetime
+from datetime import datetime, date
 
 # store the URL
 url = "http://gtfs.ltconline.ca/TripUpdate/TripUpdates.json"
-  
+
 # store the response of URL
 response = requests.get(url)
 
@@ -50,7 +50,10 @@ def get_time(route, stop):
             # convert UNIX time to UTC, then to EST
             timeunix = int(tx[ind3+6:ind3+16])
             hour = int(datetime.utcfromtimestamp(timeunix).strftime('%H'))
-            hour = str((hour - 5) % 12)
+            if (daylightSavings):
+                hour = str((hour - 4) % 12)
+            else:
+                hour = str((hour - 5) % 12)
             if (hour == '0'): hour = '12'
             minute = str(datetime.utcfromtimestamp(timeunix).strftime('%M'))
             time = hour + ":" + minute
@@ -60,6 +63,24 @@ def get_time(route, stop):
         ind1_high = tx.find('route_id":"' + route, ind1_low + 1)
         if ind1_high == -1:
             ind1_high = tx.find('route_id": "' + route, ind1_low + 1)
+
+def isDaylightSavings():
+    today = date.today()
+    m = int(today.strftime("%m"))
+    d = int(today.strftime("%d"))
+
+    if (m >= 3 and m <= 11):
+        if (m == 3):
+            if (d >= 13):
+                return True
+        elif (m == 11):
+            if (d <= 6):
+                return True
+        else:
+            return True
+
+# isDaylightSavings
+daylightSavings = isDaylightSavings()
 
 print(get_time("02", "WHARMOIR"))
 print(get_time("102", "WHARMOIR"))
